@@ -1,11 +1,12 @@
 import random
 import math
+from .utils import euclidean_distance, split_routes
 
 class VRP_GA:
     def __init__(self, customers, depot, vehicle_count, pop_size=100, generations=500,
                  crossover_rate=0.8, mutation_rate=0.02):
-        self.customers = customers  # list of (x, y, demand)
-        self.depot = depot          # (x, y)
+        self.customers = customers
+        self.depot = depot
         self.vehicle_count = vehicle_count
         self.pop_size = pop_size
         self.generations = generations
@@ -13,27 +14,17 @@ class VRP_GA:
         self.mutation_rate = mutation_rate
         self.population = []
 
-    def distance(self, a, b):
-        return math.hypot(a[0] - b[0], a[1] - b[1])
-
     def total_distance(self, route):
         dist = 0
         prev = self.depot
         for cust in route:
-            dist += self.distance(prev, self.customers[cust][:2])
+            dist += euclidean_distance(prev, self.customers[cust][:2])
             prev = self.customers[cust][:2]
-        dist += self.distance(prev, self.depot)
+        dist += euclidean_distance(prev, self.depot)
         return dist
 
     def decode(self, chromosome):
-        # split chromosome into vehicle_count routes
-        avg = len(chromosome) // self.vehicle_count
-        routes = []
-        for i in range(self.vehicle_count):
-            start = i*avg
-            end = (i+1)*avg if i < self.vehicle_count-1 else len(chromosome)
-            routes.append(chromosome[start:end])
-        return routes
+        return split_routes(chromosome, self.vehicle_count)
 
     def fitness(self, chromosome):
         routes = self.decode(chromosome)
@@ -42,10 +33,7 @@ class VRP_GA:
 
     def initial_population(self):
         base = list(range(len(self.customers)))
-        for _ in range(self.pop_size):
-            chromo = base[:]
-            random.shuffle(chromo)
-            self.population.append(chromo)
+        self.population = [random.sample(base, len(base)) for _ in range(self.pop_size)]
 
     def select(self):
         weights = [self.fitness(chromo) for chromo in self.population]
@@ -55,9 +43,8 @@ class VRP_GA:
         if random.random() > self.crossover_rate:
             return p1[:], p2[:]
         a, b = sorted(random.sample(range(len(p1)), 2))
-        child1 = [-1]*len(p1)
-        child2 = [-1]*len(p2)
-        # ordered crossover
+        child1 = [-1] * len(p1)
+        child2 = [-1] * len(p2)
         child1[a:b] = p1[a:b]
         child2[a:b] = p2[a:b]
         fill1 = [c for c in p2 if c not in child1]
@@ -78,9 +65,9 @@ class VRP_GA:
     def evolve(self):
         self.initial_population()
         best, best_fit = None, 0
-        for gen in range(self.generations):
+        for _ in range(self.generations):
             new_pop = []
-            for _ in range(self.pop_size//2):
+            for _ in range(self.pop_size // 2):
                 p1, p2 = self.select()
                 c1, c2 = self.crossover(p1, p2)
                 self.mutate(c1)
@@ -91,14 +78,4 @@ class VRP_GA:
             gen_fit = self.fitness(gen_best)
             if gen_fit > best_fit:
                 best, best_fit = gen_best, gen_fit
-        return best, 1.0/best_fit
-
-if __name__ == '__main__':
-    # Example usage:
-    depot = (50, 50)
-    customers = [(random.randint(0,100), random.randint(0,100), 1) for _ in range(30)]
-    ga = VRP_GA(customers, depot, vehicle_count=5)
-    solution, dist = ga.evolve()
-    routes = ga.decode(solution)
-    print('Routes:', routes)
-    print('Total distance:', dist)  
+        return best, 1.0 / best_fit

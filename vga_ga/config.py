@@ -1,0 +1,7 @@
+# Można tu trzymać parametry konfiguracyjne
+POP_SIZE = 100
+GENERATIONS = 500
+CROSSOVER_RATE = 0.8
+MUTATION_RATE = 0.02
+VEHICLE_COUNT = 5
+NUM_CUSTOMERS = 30
